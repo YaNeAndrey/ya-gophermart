@@ -40,16 +40,16 @@ func ParseConfig() *config.Config {
 }
 
 func ParseStorageInfo() *storage.Storage {
-	st := new(storage.Storage)
 	databaseURI := flag.String("d", "", "DB connection string")
 
 	flag.Parse()
 	var err error
 	databaseURIEnv, isExist := os.LookupEnv("DATABASE_URI")
+	st := new(storage.Storage)
 	if isExist {
-		err = st.SetDBConnectionString(databaseURIEnv)
+		st, err = storage.InitStorage(databaseURIEnv)
 	} else {
-		err = st.SetDBConnectionString(*databaseURI)
+		st, err = storage.InitStorage(*databaseURI)
 	}
 	if err != nil {
 		log.Println(err)
