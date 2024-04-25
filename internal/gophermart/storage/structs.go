@@ -9,9 +9,9 @@ type Balance struct {
 
 type Order struct {
 	Number     int
-	Status     string
+	Status     int
 	Accrual    float32
-	UploadTime time.Time
+	UploadDate time.Time
 }
 
 type Withdrawal struct {
