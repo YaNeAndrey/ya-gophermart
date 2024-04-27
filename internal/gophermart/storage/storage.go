@@ -2,6 +2,9 @@ package storage
 
 import (
 	"context"
+	"errors"
+	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/consterror"
+	"github.com/jackc/pgx/v5/pgconn"
 	"time"
 )
 
@@ -14,28 +17,28 @@ func InitStorage(dbConnectionString string) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.Close()
+	defer db.Close()
 	var st Storage
 	st.dbConnectionString = dbConnectionString
 
 	myContext := context.TODO()
 
-	_, err = db.ExecContext(myContext, "CREATE TABLE Users( login VARCHAR(30) PRIMARY KEY, passwd TEXT NOT NULL, current_balance float NOT NULL, withdrawn_balance float NOT NULL);")
+	_, err = db.ExecContext(myContext, "CREATE TABLE IF NOT EXISTS Users( login VARCHAR(30) PRIMARY KEY, passwd TEXT NOT NULL, current_balance float NOT NULL, withdrawn_balance float NOT NULL);")
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = db.ExecContext(myContext, "CREATE TABLE IF NOT EXISTS Orders (ID_order SERIAL PRIMARY KEY, status VARCHAR(10) NOT NULL, uploaded_at timestamp NOT NULL,processed_at timestamp, sum float null, accrual float NULL);")
+	_, err = db.ExecContext(myContext, "CREATE TABLE IF NOT EXISTS Orders (ID_order bigserial PRIMARY KEY, status VARCHAR(10) NOT NULL, uploaded_at timestamp NOT NULL,processed_at timestamp, sum float null, accrual float NULL);")
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = db.ExecContext(myContext, "CREATE TABLE Users_Orders( ID_user_order SERIAL PRIMARY KEY, login VARCHAR(30) REFERENCES Users (login), ID_order INTEGER REFERENCES Orders (ID_order));")
+	_, err = db.ExecContext(myContext, "CREATE TABLE IF NOT EXISTS Users_Orders( ID_user_order SERIAL PRIMARY KEY, login VARCHAR(30) REFERENCES Users (login), ID_order bigint REFERENCES Orders (ID_order));")
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = db.ExecContext(myContext, "CREATE EXTENSION pgcrypto;")
+	_, _ = db.ExecContext(myContext, "CREATE EXTENSION IF NOT EXISTS pgcrypto;")
 	if err != nil {
 		return nil, err
 	}
@@ -51,12 +54,18 @@ func (s *Storage) AddNewUser(login string, password string) error {
 	}
 
 	ctx := context.Background()
-	row := db.QueryRowContext(ctx, "INSERT INTO Users(login,passwd,current_balance,withdrawn_balance) values($1, $2, 0, 0) RETURNING login;", login, password)
-	var bufLogin string
+	row := db.QueryRowContext(ctx, "INSERT INTO Users(login,passwd,current_balance,withdrawn_balance) values($1, crypt($2, gen_salt('bf')), 0, 0) RETURNING login;", login, password)
 
-	err = row.Scan(&bufLogin)
+	err = row.Err()
+	var pgErr *pgconn.PgError
 	if err != nil {
-		return err
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				return consterror.DuplicateLogin
+			}
+		} else {
+			return err
+		}
 	}
 	return nil
 }
@@ -70,12 +79,12 @@ func (s *Storage) CheckUserPassword(login string, password string) (bool, error)
 
 	ctx := context.Background()
 	row := db.QueryRowContext(ctx, "SELECT (case when (passwd = crypt($2, passwd)) then 'True' else 'False' end) as ok FROM users WHERE login = $1", login, password)
-	var passwdOK bool
 
+	var passwdOK bool
 	// if error no rows - return user not found
 	err = row.Scan(&passwdOK)
 	if err != nil {
-		return false, err
+		return false, consterror.LoginNotFound
 	}
 
 	return passwdOK, nil
@@ -91,23 +100,25 @@ func (s *Storage) AddNewOrder(login string, orderNumber string) error {
 	ctx := context.Background()
 	res, err := db.ExecContext(ctx, "INSERT INTO orders (id_order,status,uploaded_at,sum,accrual) VALUES ($1,'NEW',$2,0,0)", orderNumber, time.Now())
 	if err != nil {
-		if true { //err message == duplicate key => Check who added order {
-			row := db.QueryRowContext(ctx, "select (case when (login = $1) then 'True' else 'False' end) from users_orders where id_order = $2", login, orderNumber)
-			var isCurrentUser bool
-			err = row.Scan(&isCurrentUser)
-			if err != nil {
-				return err
-			}
-			if isCurrentUser {
-				//return error : current user created order earlier
-			} else {
-				//return error : another user created order earlier
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				row := db.QueryRowContext(ctx, "select (case when (login = $1) then 'True' else 'False' end) from users_orders where id_order = $2", login, orderNumber)
+				if row.Err() != nil {
+					return err
+				}
+				var isCurrentUser bool
+				err = row.Scan(&isCurrentUser)
+				if isCurrentUser {
+					return consterror.DublicateUserOrder
+				} else {
+					return consterror.DublicateAnotherUserOrder
+				}
 			}
 		} else {
 			return err
 		}
 	}
-
 	rows, err := res.RowsAffected()
 	if rows == 1 {
 		_, err = db.ExecContext(ctx, "INSERT INTO users_orders (id_order,login) values ($1,$2)", orderNumber, login)
@@ -127,8 +138,10 @@ func (s *Storage) GetUserBalance(login string) (*Balance, error) {
 
 	ctx := context.Background()
 	row := db.QueryRowContext(ctx, "select current_balance,withdrawn_balance from users where login = $1", login)
+	if row.Err() != nil {
+		return nil, err
+	}
 	var balance Balance
-
 	// if error no rows - return user not found
 	err = row.Scan(&balance)
 	if err != nil {
@@ -146,6 +159,9 @@ func (s *Storage) GetUserOrders(login string) (*[]Order, error) {
 
 	ctx := context.Background()
 	rows, err := db.QueryContext(ctx, "select id_order,status,uploaded_at,accrual from orders join users_orders on orders.id_order = users_orders.id_order where login = $1", login)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	var orders []Order
@@ -156,11 +172,8 @@ func (s *Storage) GetUserOrders(login string) (*[]Order, error) {
 		}
 		orders = append(orders, order)
 	}
-	if len(orders) > 0 {
-		return &orders, nil
-	} else {
-		return nil, nil
-	}
+	return &orders, nil
+
 }
 
 // Получение информации о выводе средств
@@ -171,9 +184,12 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 	}
 
 	ctx := context.Background()
-	rows, err := db.QueryContext(ctx, "select orders.id_order,orders.sum,orders.processed_at from orders join users_orders on orders.id_order = users_orders.id_order where login = $1", login)
+	rows, err := db.QueryContext(ctx, "select orders.id_order,orders.sum,orders.processed_at from orders join users_orders on orders.id_order = users_orders.id_order where login = $1 and sum > 0", login)
 	defer rows.Close()
 
+	if err != nil {
+		return nil, err
+	}
 	var withdrawals []Withdrawal
 	for rows.Next() {
 		var withdrawal Withdrawal
@@ -182,37 +198,42 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 		}
 		withdrawals = append(withdrawals, withdrawal)
 	}
-	if len(withdrawals) > 0 {
-		return &withdrawals, nil
-	} else {
-		return nil, nil
-	}
+	return &withdrawals, nil
 }
 
 // Запрос на списание средств
-func (s *Storage) DoRebiting(login string, sum float32) error {
+func (s *Storage) DoRebiting(login string, order string, sum float32) error {
 	db, err := TryToOpenDBConnection(s.dbConnectionString)
 	if err != nil {
 		return err
 	}
-
 	ctx := context.Background()
 	row := db.QueryRowContext(ctx, "select current_balance from users where login = $1", login)
+	if row.Err() != nil {
+		return err
+	}
 	var currentBalance float32
 	err = row.Scan(&currentBalance)
 	if err != nil {
 		return err
 	}
-
 	if currentBalance <= sum {
-		return err //error wit message - не досаточно средства для списания
-	} else {
-		_, err = db.ExecContext(ctx, "UPDATE Users set current_balance = current_balance-$1,withdrawn_balance =withdrawn_balance+$1 where login = $2", sum, login)
-		if err != nil {
-			return err
-		}
-		//TODO. Update Orders
-
+		return consterror.InsufficientFunds
 	}
+	res, err := db.ExecContext(ctx, "update orders set sum = sum+$1 where id_order = $2", sum, order)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if rows == 0 {
+		return consterror.OrderNotFound
+	}
+
+	_, err = db.ExecContext(ctx, "UPDATE Users set current_balance = current_balance-$1,withdrawn_balance = withdrawn_balance+$1 where login = $2", sum, login)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

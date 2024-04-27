@@ -1,8 +1,12 @@
 package middleware
 
 import (
+	"fmt"
+	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/gzip"
+	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/handler"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"slices"
@@ -66,10 +70,25 @@ func Gzip() func(next http.Handler) http.Handler {
 	}
 }
 
-func Authorization() func(next http.Handler) http.Handler {
+func CheckAccess() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
+			cookie := ""
+			claims := &handler.Claims{}
+			token, _ := jwt.ParseWithClaims(cookie, claims,
+				func(t *jwt.Token) (interface{}, error) {
+					if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+						return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+					}
+					return []byte(constants.SECRET_KEY), nil
+				})
+
+			if token.Valid {
+				next.ServeHTTP(w, r)
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
+			}
+
 		})
 	}
 }

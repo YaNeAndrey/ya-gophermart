@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func InitRouter(c config.Config, st storage.Storage) http.Handler {
+func InitRouter(c config.Config, st *storage.Storage) http.Handler {
 	r := chi.NewRouter()
 	r.NotFound(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusNotFound)
@@ -24,33 +24,33 @@ func InitRouter(c config.Config, st storage.Storage) http.Handler {
 
 	r.Route("/", func(r chi.Router) {
 		r.Post("/api/user/register/", func(rw http.ResponseWriter, req *http.Request) {
-			handler.RegistrationPOST(rw, req)
+			handler.RegistrationPOST(rw, req, st)
 		})
 		r.Post("/api/user/login/", func(rw http.ResponseWriter, req *http.Request) {
-			handler.LoginPOST(rw, req)
+			handler.LoginPOST(rw, req, st)
 		})
 
 		//after authorization
 		r.Route("/api/user/", func(r chi.Router) {
-			r.Use(middleware.Authorization())
+			//	r.Use(middleware.CheckAccess())
 			r.Route("/orders/", func(r chi.Router) {
 				r.Post("/", func(rw http.ResponseWriter, req *http.Request) {
-					handler.OrdersPOST(rw, req)
+					handler.OrdersPOST(rw, req, st)
 				})
 				r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
-					handler.OrdersGET(rw, req)
+					handler.OrdersGET(rw, req, st)
 				})
 			})
 
 			r.Get("/withdrawals/", func(rw http.ResponseWriter, req *http.Request) {
-				handler.WithdrawalsGET(rw, req)
+				handler.WithdrawalsGET(rw, req, st)
 			})
 			r.Route("/balance/", func(r chi.Router) {
 				r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
-					handler.BalanceGET(rw, req)
+					handler.BalanceGET(rw, req, st)
 				})
 				r.Post("/withdraw/", func(rw http.ResponseWriter, req *http.Request) {
-					handler.BalanceWithdrawPOST(rw, req)
+					handler.BalanceWithdrawPOST(rw, req, st)
 				})
 			})
 		})

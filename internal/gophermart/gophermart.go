@@ -11,7 +11,7 @@ func InitGophermart() {
 	conf := parser.ParseConfig()
 	st := parser.ParseStorageInfo()
 
-	r := router.InitRouter(*conf, *st)
+	r := router.InitRouter(*conf, st)
 
 	err := http.ListenAndServe(fmt.Sprintf("%s:%d", "localhost", 8080), r)
 

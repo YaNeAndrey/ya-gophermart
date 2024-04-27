@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	errors "github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/errors"
+	errors "github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/consterror"
 	"strconv"
 	"strings"
 )
