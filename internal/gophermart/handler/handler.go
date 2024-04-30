@@ -10,6 +10,7 @@ import (
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/config"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/consterror"
+	status "github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/status"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/storage"
 	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
@@ -149,7 +150,12 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 			UploadDate: order.UploadDate,
 			Sum:        order.Sum,
 		}
-		err = st.UpdateOrder(updatedOrder)
+		if updatedOrder.Status != order.Status {
+			err = st.UpdateOrder(updatedOrder)
+			if updatedOrder.Status == status.Processed {
+
+			}
+		}
 		if err != nil {
 			return
 		}

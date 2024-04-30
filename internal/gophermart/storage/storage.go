@@ -293,20 +293,23 @@ func (s *Storage) UpdateOrder(order Order) error {
 		return err
 	}
 	ctx := context.Background()
-	if order.Status == status.Processed {
-		_, err = db.ExecContext(ctx, "update orders set status = $1 where id_order = $2", order.Status, order.Number)
-		if err != nil {
-			return err
-		}
-		_, err = db.ExecContext(ctx, "update Users set current_balance = current_balance+$1 where login = (select users_orders.login from users_orders where users_orders.id_order = $2)", order.Accrual, order.Number)
-		if err != nil {
-			return err
-		}
-	} else {
-		_, err = db.ExecContext(ctx, "update orders set status = $1 where id_order = $2", order.Status, order.Number)
-		if err != nil {
-			return err
-		}
+
+	_, err = db.ExecContext(ctx, "update orders set status = $1 where id_order = $2", order.Status, order.Number)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) UpdateBalance(order Order) error {
+	db, err := TryToOpenDBConnection(s.dbConnectionString)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	_, err = db.ExecContext(ctx, "update Users set current_balance = current_balance+$1 where login = (select DISTINCT ON (users_orders.login) from users_orders where users_orders.id_order = $2)", order.Accrual, order.Number)
+	if err != nil {
+		return err
 	}
 	return nil
 }
