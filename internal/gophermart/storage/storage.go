@@ -156,7 +156,7 @@ func (s *Storage) GetUserBalance(login string) (*Balance, error) {
 	}
 	var balance Balance
 	// if error no rows - return user not found
-	err = row.Scan(&balance)
+	err = row.Scan(&balance.Current, &balance.Withdrawn)
 	if err != nil {
 		return nil, err
 	}
