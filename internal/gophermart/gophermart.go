@@ -20,6 +20,7 @@ func InitGophermart() {
 	log.Println(conf.GetSrvAddr())
 	log.Println("localhost:8080")
 	srv := conf.GetSrvAddr()
+	srv = "localhost:8080"
 	err := http.ListenAndServe(srv /*conf.GetSrvAddr()*/, r)
 
 	if err != nil {
