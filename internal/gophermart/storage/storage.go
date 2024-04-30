@@ -99,7 +99,7 @@ func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
 	}
 
 	ctx := context.Background()
-	res, err := db.ExecContext(ctx, "INSERT INTO orders (id_order,status,uploaded_at,sum,accrual) VALUES ($1,'NEW',$2,0,0)", orderNumber, time.Now())
+	res, err := db.ExecContext(ctx, "INSERT INTO orders (id_order,status,uploaded_at,sum,accrual) VALUES ($1,$2,$3,0,0)", orderNumber, status.NEW, time.Now())
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -129,7 +129,7 @@ func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
 	}
 	return &Order{
 		Number:        orderNumber,
-		Status:        "",
+		Status:        status.NEW,
 		Accrual:       0,
 		UploadDate:    time.Now(),
 		Sum:           0,
