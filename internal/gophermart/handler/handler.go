@@ -130,7 +130,8 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		return
 	}
 	if len(*orders) == 0 {
-		http.Error(w, "", http.StatusNoContent)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
