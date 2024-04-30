@@ -295,12 +295,16 @@ func (s *Storage) UpdateOrder(order Order) error {
 	}
 	ctx := context.Background()
 	if order.Status == status.Processed {
-		_, err := db.ExecContext(ctx, "update orders set status = $1, processed_at = $2 where id_order = $3", order.Status, order.ProcessedDate, order.Number)
+		_, err = db.ExecContext(ctx, "update orders set status = $1, processed_at = $2 where id_order = $3", order.Status, order.ProcessedDate, order.Number)
+		if err != nil {
+			return err
+		}
+		_, err = db.ExecContext(ctx, "update Users set current_balance = current_balance+$1 where login = (select users_orders.login from users_orders where users_orders.id_order = $2)", order.Accrual, order.Number)
 		if err != nil {
 			return err
 		}
 	} else {
-		_, err := db.ExecContext(ctx, "update orders set status = $1 where id_order = $2", order.Status, order.Number)
+		_, err = db.ExecContext(ctx, "update orders set status = $1 where id_order = $2", order.Status, order.Number)
 		if err != nil {
 			return err
 		}
