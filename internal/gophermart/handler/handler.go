@@ -126,6 +126,7 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	orders, err := st.GetUserOrders(claims.Login)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
