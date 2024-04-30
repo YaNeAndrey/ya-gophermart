@@ -13,7 +13,7 @@ func InitGophermart() {
 	st := parser.ParseStorageInfo()
 	orderCh := make(chan storage.Order, 100)
 	am := accrualmanager.InitAccrualManager(conf, st, orderCh)
-	am.Start()
+	go am.Start()
 
 	r := router.InitRouter(st, orderCh)
 
