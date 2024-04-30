@@ -3,13 +3,20 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/backoff"
+	"github.com/Rican7/retry/strategy"
+	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/config"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/consterror"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/storage"
 	"github.com/golang-jwt/jwt/v4"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
+	"time"
 )
 
 type Userinfo struct {
@@ -78,28 +85,20 @@ func LoginPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 	}
 }
 
-func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage, orderCh chan<- storage.Order) {
+func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 	claims, ok := checkAccess(r)
 	if !ok {
 		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
 	body, _ := io.ReadAll(r.Body)
-
-	//if body str not number
-	/*user, err := ReadAuthDate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-	*/
 	orderNum, err := strconv.ParseInt(string(body), 10, 64)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	order, err := st.AddNewOrder(claims.Login, orderNum)
+	_, err = st.AddNewOrder(claims.Login, orderNum)
 	if err != nil {
 		switch err {
 		case consterror.ErrDuplicateUserOrder:
@@ -114,11 +113,10 @@ func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage, ord
 		}
 		return
 	}
-	orderCh <- *order
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func OrdersGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
+func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *storage.Storage) {
 	claims, ok := checkAccess(r)
 	if !ok {
 		http.Error(w, "", http.StatusUnauthorized)
@@ -129,13 +127,24 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if len(*orders) == 0 {
+	client := http.Client{}
+	ordersInfo := []storage.Order{}
+	for _, order := range *orders {
+		newOrderInfo, err := sendRequestToAccrual(conf, order, &client)
+		if err != nil {
+			continue
+		}
+		//st.UpdateOrder(*newOrderInfo)
+		ordersInfo = append(ordersInfo, *newOrderInfo)
+	}
+
+	if len(ordersInfo) == 0 {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	body, err := json.Marshal(orders)
+	body, err := json.Marshal(ordersInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -297,4 +306,48 @@ func checkAccess(r *http.Request) (*Claims, bool) {
 	} else {
 		return nil, false
 	}
+}
+
+func sendRequestToAccrual(config *config.Config, order storage.Order, client *http.Client) (*storage.Order, error) {
+	urlStr, err := url.JoinPath(config.GetAccrualAddr(), "/api/orders/", strconv.FormatInt(order.Number, 10))
+	if err != nil {
+		return nil, err
+	}
+	r, err := http.NewRequest(http.MethodGet, urlStr, nil)
+	if err != nil {
+		return nil, err
+	}
+	var updatedOrder storage.Order
+	err = retry.Retry(
+		func(attempt uint) error {
+			//send request
+			resp, err := client.Do(r)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+			switch resp.StatusCode {
+			case http.StatusOK:
+				{
+					err := json.NewDecoder(resp.Body).Decode(&updatedOrder)
+					if err != nil {
+						return err
+					}
+				}
+			case http.StatusNoContent:
+				{
+					log.Println("The order is not registered in the accrual system")
+				}
+			case http.StatusTooManyRequests:
+				{
+					log.Println(consterror.ErrCountRequestToAccrual)
+					return consterror.ErrCountRequestToAccrual
+				}
+			}
+			return nil
+		},
+		strategy.Limit(4),
+		strategy.Backoff(backoff.Incremental(0, 10*time.Second)),
+	)
+	return &updatedOrder, err
 }
