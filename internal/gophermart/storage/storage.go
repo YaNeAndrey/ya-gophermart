@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/consterror"
+	status "github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/status"
 	"github.com/jackc/pgx/v5/pgconn"
 	"time"
 )
@@ -91,10 +92,10 @@ func (s *Storage) CheckUserPassword(login string, password string) (bool, error)
 }
 
 // Загрузка номера заказа
-func (s *Storage) AddNewOrder(login string, orderNumber string) error {
+func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
 	db, err := TryToOpenDBConnection(s.dbConnectionString)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx := context.Background()
@@ -105,28 +106,35 @@ func (s *Storage) AddNewOrder(login string, orderNumber string) error {
 			if pgErr.Code == "23505" {
 				row := db.QueryRowContext(ctx, "select (case when (login = $1) then 'True' else 'False' end) from users_orders where id_order = $2", login, orderNumber)
 				if row.Err() != nil {
-					return err
+					return nil, err
 				}
 				var isCurrentUser bool
 				err = row.Scan(&isCurrentUser)
 				if isCurrentUser {
-					return consterror.DublicateUserOrder
+					return nil, consterror.DuplicateUserOrder
 				} else {
-					return consterror.DublicateAnotherUserOrder
+					return nil, consterror.DuplicateAnotherUserOrder
 				}
 			}
 		} else {
-			return err
+			return nil, err
 		}
 	}
 	rows, err := res.RowsAffected()
 	if rows == 1 {
 		_, err = db.ExecContext(ctx, "INSERT INTO users_orders (id_order,login) values ($1,$2)", orderNumber, login)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return &Order{
+		Number:        orderNumber,
+		Status:        "",
+		Accrual:       0,
+		UploadDate:    time.Now(),
+		Sum:           0,
+		ProcessedDate: time.Time{},
+	}, nil
 }
 
 // Получение текущего баланса пользователя
@@ -167,7 +175,7 @@ func (s *Storage) GetUserOrders(login string) (*[]Order, error) {
 	var orders []Order
 	for rows.Next() {
 		var order Order
-		if err := rows.Scan(&order); err != nil {
+		if err := rows.Scan(&order.Number, &order.Status, &order.UploadDate, &order.Accrual); err != nil {
 			continue
 		}
 		orders = append(orders, order)
@@ -193,7 +201,7 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 	var withdrawals []Withdrawal
 	for rows.Next() {
 		var withdrawal Withdrawal
-		if err := rows.Scan(&withdrawal); err != nil {
+		if err := rows.Scan(&withdrawal.OrderNumber, &withdrawal.Sum, withdrawal.ProcessedDate); err != nil {
 			continue
 		}
 		withdrawals = append(withdrawals, withdrawal)
@@ -202,7 +210,7 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 }
 
 // Запрос на списание средств
-func (s *Storage) DoRebiting(login string, order string, sum float32) error {
+func (s *Storage) DoRebiting(login string, order int64, sum float32) error {
 	db, err := TryToOpenDBConnection(s.dbConnectionString)
 	if err != nil {
 		return err
@@ -235,5 +243,49 @@ func (s *Storage) DoRebiting(login string, order string, sum float32) error {
 		return err
 	}
 
+	return nil
+}
+
+func (s *Storage) GetAllNotProcessedOrders() (*[]Order, error) {
+	db, err := TryToOpenDBConnection(s.dbConnectionString)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	rows, err := db.QueryContext(ctx, "select id_order,status from orders where orders.status != 'PROCESSED' and orders.status != 'INVALID'")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []Order
+	for rows.Next() {
+		var order Order
+		if err := rows.Scan(&order.Number, &order.Status); err != nil {
+			continue
+		}
+		orders = append(orders, order)
+	}
+	return &orders, nil
+}
+
+func (s *Storage) UpdateOrder(order Order) error {
+	db, err := TryToOpenDBConnection(s.dbConnectionString)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	if order.Status == status.PROCESSED {
+		_, err := db.ExecContext(ctx, "update orders set status = $1, processed_at = $2 where id_order = $3", order.Status, order.ProcessedDate, order.Number)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err := db.ExecContext(ctx, "update orders set status = $1 where id_order = $2", order.Status, order.Number)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -77,7 +78,7 @@ func LoginPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 	}
 }
 
-func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
+func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage, orderCh chan<- storage.Order) {
 	body, _ := io.ReadAll(r.Body)
 
 	//if body str not number
@@ -87,19 +88,28 @@ func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		return
 	}
 
-	err = st.AddNewOrder(user.Login, string(body))
+	orderNum, err := strconv.ParseInt(string(body), 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	order, err := st.AddNewOrder(user.Login, orderNum)
 	if err != nil {
 		switch err {
-		case consterror.DublicateUserOrder:
-			w.WriteHeader(http.StatusOK)
-		case consterror.DublicateAnotherUserOrder:
+		case consterror.DuplicateUserOrder:
+			{
+				w.WriteHeader(http.StatusOK)
+
+			}
+		case consterror.DuplicateAnotherUserOrder:
 			http.Error(w, err.Error(), http.StatusConflict)
 		default:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
-
+	orderCh <- *order
 	w.WriteHeader(http.StatusAccepted)
 }
 

@@ -1,7 +1,6 @@
 package router
 
 import (
-	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/config"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/handler"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/middleware"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/storage"
@@ -11,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func InitRouter(c config.Config, st *storage.Storage) http.Handler {
+func InitRouter(st *storage.Storage, ordersCh chan storage.Order) http.Handler {
 	r := chi.NewRouter()
 	r.NotFound(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusNotFound)
@@ -35,7 +34,7 @@ func InitRouter(c config.Config, st *storage.Storage) http.Handler {
 			//	r.Use(middleware.CheckAccess())
 			r.Route("/orders/", func(r chi.Router) {
 				r.Post("/", func(rw http.ResponseWriter, req *http.Request) {
-					handler.OrdersPOST(rw, req, st)
+					handler.OrdersPOST(rw, req, st, ordersCh)
 				})
 				r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
 					handler.OrdersGET(rw, req, st)
