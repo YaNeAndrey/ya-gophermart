@@ -3,7 +3,6 @@ package router
 import (
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/config"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/handler"
-	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/middleware"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/storage"
 	"github.com/go-chi/chi/v5"
 	"net/http"
@@ -20,7 +19,7 @@ func InitRouter(st *storage.Storage, config *config.Config) http.Handler {
 	logger := log.New()
 	logger.SetLevel(log.InfoLevel)
 	//r.Use(middleware.Logger(logger))
-	r.Use(middleware.Gzip())
+	//r.Use(middleware.Gzip())
 
 	r.Route("/", func(r chi.Router) {
 		r.Post("/api/user/register", func(rw http.ResponseWriter, req *http.Request) {
