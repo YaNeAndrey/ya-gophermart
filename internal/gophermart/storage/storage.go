@@ -134,12 +134,11 @@ func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
 		}
 	}
 	return &Order{
-		Number:        orderNumber,
-		Status:        status.New,
-		Accrual:       0,
-		UploadDate:    time.Now(),
-		Sum:           0,
-		ProcessedDate: time.Time{},
+		Number:     orderNumber,
+		Status:     status.New,
+		Accrual:    0,
+		UploadDate: time.Now(),
+		Sum:        0,
 	}, nil
 }
 
@@ -295,7 +294,7 @@ func (s *Storage) UpdateOrder(order Order) error {
 	}
 	ctx := context.Background()
 	if order.Status == status.Processed {
-		_, err = db.ExecContext(ctx, "update orders set status = $1, processed_at = $2 where id_order = $3", order.Status, order.ProcessedDate, order.Number)
+		_, err = db.ExecContext(ctx, "update orders set status = $1 where id_order = $2", order.Status, order.Number)
 		if err != nil {
 			return err
 		}

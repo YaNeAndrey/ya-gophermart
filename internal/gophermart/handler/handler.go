@@ -137,12 +137,23 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 	client := http.Client{}
 	ordersInfo := []storage.Order{}
 	for _, order := range *orders {
-		newOrderInfo, err := sendRequestToAccrual(conf, order, &client)
+		orderAccrual, err := sendRequestToAccrual(conf, order, &client)
 		if err != nil {
 			continue
 		}
-		//st.UpdateOrder(*newOrderInfo)
-		ordersInfo = append(ordersInfo, *newOrderInfo)
+
+		updatedOrder := storage.Order{
+			Number:     orderAccrual.Order,
+			Status:     orderAccrual.Status,
+			Accrual:    orderAccrual.Accrual,
+			UploadDate: order.UploadDate,
+			Sum:        order.Sum,
+		}
+		err = st.UpdateOrder(updatedOrder)
+		if err != nil {
+			return
+		}
+		ordersInfo = append(ordersInfo, updatedOrder)
 	}
 
 	if len(ordersInfo) == 0 {
@@ -315,7 +326,7 @@ func checkAccess(r *http.Request) (*Claims, bool) {
 	}
 }
 
-func sendRequestToAccrual(config *config.Config, order storage.Order, client *http.Client) (*storage.Order, error) {
+func sendRequestToAccrual(config *config.Config, order storage.Order, client *http.Client) (*OrderAccrual, error) {
 	urlStr, err := url.JoinPath(config.GetAccrualAddr(), "/api/orders/", strconv.FormatInt(order.Number, 10))
 	if err != nil {
 		return nil, err
@@ -324,7 +335,7 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 	if err != nil {
 		return nil, err
 	}
-	var updatedOrder storage.Order
+	var updatedOrder OrderAccrual
 	err = retry.Retry(
 		func(attempt uint) error {
 			//send request
@@ -357,27 +368,4 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 		strategy.Backoff(backoff.Incremental(0, 10*time.Second)),
 	)
 	return &updatedOrder, err
-}
-
-func luhnCheck(number int64) bool {
-	var luhn int64
-	buf := number
-	for i := 0; buf > 0; i++ {
-		cur := buf % 10
-
-		if i%2 == 0 { // even
-			cur = cur * 2
-			if cur > 9 {
-				cur = cur%10 + cur/10
-			}
-		}
-
-		luhn += cur
-		buf = buf / 10
-	}
-	checkNumber := luhn % 10
-	if checkNumber == 0 {
-		return true
-	}
-	return false
 }
