@@ -58,7 +58,7 @@ func (m *Manager) Start() {
 }
 
 func sendRequestToAccrual(config *config.Config, order storage.Order, client *http.Client) (*storage.Order, error) {
-	urlStr, err := url.JoinPath(config.GetAccrualAddr(), "/api/orders/", strconv.FormatInt(order.Number, 10))
+	urlStr, err := url.JoinPath("http://", config.GetAccrualAddr(), "/api/orders/", strconv.FormatInt(order.Number, 10))
 	if err != nil {
 		return nil, err
 	}

@@ -28,9 +28,9 @@ func ParseConfig() *config.Config {
 	}
 	accrualAddressEnv, isExist := os.LookupEnv("ACCRUAL_SYSTEM_ADDRESS")
 	if !isExist {
-		err = conf.SetSrvAddr(*accrualAddress)
+		err = conf.SetAccrualAddr(*accrualAddress)
 	} else {
-		err = conf.SetSrvAddr(accrualAddressEnv)
+		err = conf.SetAccrualAddr(accrualAddressEnv)
 	}
 	if err != nil {
 		log.Println(err)
