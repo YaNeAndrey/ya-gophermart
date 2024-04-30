@@ -92,7 +92,7 @@ func (s *Storage) CheckUserPassword(login string, password string) (bool, error)
 }
 
 // Загрузка номера заказа
-func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
+func (s *Storage) AddNewOrder(login string, orderNumber string) (*Order, error) {
 	db, err := TryToOpenDBConnection(s.dbConnectionString)
 	if err != nil {
 		return nil, err

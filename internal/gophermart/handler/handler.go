@@ -104,7 +104,7 @@ func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		return
 	}
 
-	_, err = st.AddNewOrder(claims.Login, orderNum)
+	_, err = st.AddNewOrder(claims.Login, strconv.FormatInt(orderNum, 10))
 	if err != nil {
 		switch err {
 		case consterror.ErrDuplicateUserOrder:
@@ -142,12 +142,8 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 		if err != nil {
 			continue
 		}
-		orderNumber, err := strconv.ParseInt(orderAccrual.Order, 10, 64)
-		if err != nil {
-			continue
-		}
 		updatedOrder := storage.Order{
-			Number:     orderNumber,
+			Number:     orderAccrual.Order,
 			Status:     orderAccrual.Status,
 			Accrual:    orderAccrual.Accrual,
 			UploadDate: order.UploadDate,
@@ -330,7 +326,7 @@ func checkAccess(r *http.Request) (*Claims, bool) {
 }
 
 func sendRequestToAccrual(config *config.Config, order storage.Order, client *http.Client) (*OrderAccrual, error) {
-	urlStr, err := url.JoinPath(config.GetAccrualAddr(), "/api/orders/", strconv.FormatInt(order.Number, 10))
+	urlStr, err := url.JoinPath(config.GetAccrualAddr(), "/api/orders/", order.Number)
 	if err != nil {
 		return nil, err
 	}
