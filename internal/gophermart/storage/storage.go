@@ -110,6 +110,9 @@ func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
 				}
 				var isCurrentUser bool
 				err = row.Scan(&isCurrentUser)
+				if err != nil {
+					return nil, err
+				}
 				if isCurrentUser {
 					return nil, consterror.ErrDuplicateUserOrder
 				} else {
@@ -121,6 +124,9 @@ func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
 		}
 	}
 	rows, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
 	if rows == 1 {
 		_, err = db.ExecContext(ctx, "INSERT INTO users_orders (id_order,login) values ($1,$2)", orderNumber, login)
 		if err != nil {
@@ -240,6 +246,9 @@ func (s *Storage) DoRebiting(login string, order int64, sum float32) error {
 	}
 
 	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if rows == 0 {
 		return consterror.ErrOrderNotFound
 	}
@@ -263,8 +272,8 @@ func (s *Storage) GetAllNotProcessedOrders() (*[]Order, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		return nil, err
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 	defer rows.Close()
 
