@@ -31,8 +31,7 @@ func InitRouter(st *storage.Storage, ordersCh chan storage.Order) http.Handler {
 
 		//after authorization
 		r.Route("/api/user/", func(r chi.Router) {
-
-			//	r.Use(middleware.CheckAccess())
+			//r.Use(middleware.CheckAccess())
 			r.Route("/orders", func(r chi.Router) {
 				r.Post("/", func(rw http.ResponseWriter, req *http.Request) {
 					handler.OrdersPOST(rw, req, st, ordersCh)
@@ -42,14 +41,14 @@ func InitRouter(st *storage.Storage, ordersCh chan storage.Order) http.Handler {
 				})
 			})
 
-			r.Get("/withdrawals/", func(rw http.ResponseWriter, req *http.Request) {
+			r.Get("/withdrawals", func(rw http.ResponseWriter, req *http.Request) {
 				handler.WithdrawalsGET(rw, req, st)
 			})
 			r.Route("/balance/", func(r chi.Router) {
 				r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
 					handler.BalanceGET(rw, req, st)
 				})
-				r.Post("/withdraw/", func(rw http.ResponseWriter, req *http.Request) {
+				r.Post("/withdraw", func(rw http.ResponseWriter, req *http.Request) {
 					handler.BalanceWithdrawPOST(rw, req, st)
 				})
 			})

@@ -1,12 +1,8 @@
 package middleware
 
 import (
-	"fmt"
-	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/gzip"
-	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/handler"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"slices"
@@ -70,12 +66,17 @@ func Gzip() func(next http.Handler) http.Handler {
 	}
 }
 
+/*
 func CheckAccess() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cookie := ""
+			cookie, err := r.Cookie("token")
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 			claims := &handler.Claims{}
-			token, _ := jwt.ParseWithClaims(cookie, claims,
+			token, err := jwt.ParseWithClaims(cookie.Value, claims,
 				func(t *jwt.Token) (interface{}, error) {
 					if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 						return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
@@ -83,6 +84,10 @@ func CheckAccess() func(next http.Handler) http.Handler {
 					return []byte(constants.SecretKey), nil
 				})
 
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 			if token.Valid {
 				next.ServeHTTP(w, r)
 			} else {
@@ -92,3 +97,4 @@ func CheckAccess() func(next http.Handler) http.Handler {
 		})
 	}
 }
+*/

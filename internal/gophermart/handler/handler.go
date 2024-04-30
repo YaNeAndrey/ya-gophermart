@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/consterror"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/storage"
@@ -78,22 +79,27 @@ func LoginPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 }
 
 func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage, orderCh chan<- storage.Order) {
+	claims, ok := checkAccess(r)
+	if !ok {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
 	body, _ := io.ReadAll(r.Body)
 
 	//if body str not number
-	user, err := ReadAuthDate(r)
+	/*user, err := ReadAuthDate(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-
+	*/
 	orderNum, err := strconv.ParseInt(string(body), 10, 64)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	order, err := st.AddNewOrder(user.Login, orderNum)
+	order, err := st.AddNewOrder(claims.Login, orderNum)
 	if err != nil {
 		switch err {
 		case consterror.ErrDuplicateUserOrder:
@@ -113,12 +119,12 @@ func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage, ord
 }
 
 func OrdersGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
-	user, err := ReadAuthDate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	claims, ok := checkAccess(r)
+	if !ok {
+		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
-	orders, err := st.GetUserOrders(user.Login)
+	orders, err := st.GetUserOrders(claims.Login)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -133,22 +139,22 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
 
 func WithdrawalsGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
-	user, err := ReadAuthDate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	claims, ok := checkAccess(r)
+	if !ok {
+		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
-	withdrawals, err := st.GetUserWithdrawals(user.Login)
+	withdrawals, err := st.GetUserWithdrawals(claims.Login)
 	if len(*withdrawals) == 0 {
 		http.Error(w, err.Error(), http.StatusNoContent)
 	}
@@ -167,12 +173,12 @@ func WithdrawalsGET(w http.ResponseWriter, r *http.Request, st *storage.Storage)
 }
 
 func BalanceGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
-	user, err := ReadAuthDate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	claims, ok := checkAccess(r)
+	if !ok {
+		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
-	balance, err := st.GetUserBalance(user.Login)
+	balance, err := st.GetUserBalance(claims.Login)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -182,24 +188,25 @@ func BalanceGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
 
 func BalanceWithdrawPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
-	user, err := ReadAuthDate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	claims, ok := checkAccess(r)
+	if !ok {
+		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
 
 	var withdrawals WithdrawalsRequest
-	err = json.NewDecoder(r.Body).Decode(&withdrawals)
+	err := json.NewDecoder(r.Body).Decode(&withdrawals)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -212,7 +219,7 @@ func BalanceWithdrawPOST(w http.ResponseWriter, r *http.Request, st *storage.Sto
 		}
 	*/
 
-	err = st.DoRebiting(user.Login, withdrawals.Order, withdrawals.Sum)
+	err = st.DoRebiting(claims.Login, withdrawals.Order, withdrawals.Sum)
 	if err != nil {
 		switch err {
 		case consterror.ErrOrderNotFound:
@@ -264,4 +271,29 @@ func buildJWTStringWithLogin(login string) (string, error) {
 
 	// возвращаем строку токена
 	return tokenString, nil
+}
+
+func checkAccess(r *http.Request) (*Claims, bool) {
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		return nil, false
+	}
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(cookie.Value, claims,
+		func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+			return []byte(constants.SecretKey), nil
+		})
+
+	if err != nil {
+		return nil, false
+	}
+	if token.Valid {
+		return claims, true
+	} else {
+		return nil, false
+	}
 }
