@@ -172,7 +172,7 @@ func (s *Storage) GetUserOrders(login string) (*[]Order, error) {
 	}
 
 	ctx := context.Background()
-	rows, err := db.QueryContext(ctx, "select id_order,status,uploaded_at,accrual from orders join users_orders on orders.id_order = users_orders.id_order where login = $1", login)
+	rows, err := db.QueryContext(ctx, "select orders.id_order,status,uploaded_at,accrual from orders join users_orders on orders.id_order = users_orders.id_order where login = $1", login)
 	if err != nil {
 		return nil, err
 	}
