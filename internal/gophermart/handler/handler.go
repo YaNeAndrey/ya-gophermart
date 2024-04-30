@@ -125,7 +125,7 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		return
 	}
 	if len(*orders) == 0 {
-		http.Error(w, err.Error(), http.StatusNoContent)
+		http.Error(w, "", http.StatusNoContent)
 		return
 	}
 

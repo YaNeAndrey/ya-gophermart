@@ -63,6 +63,9 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 		return nil, err
 	}
 	r, err := http.NewRequest(http.MethodGet, urlStr, nil)
+	if err != nil {
+		return nil, err
+	}
 	var updatedOrder storage.Order
 	err = retry.Retry(
 		func(attempt uint) error {
