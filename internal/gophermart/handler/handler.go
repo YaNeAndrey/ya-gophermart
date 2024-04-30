@@ -97,7 +97,11 @@ func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	ok = luhnCheck(orderNum)
+	if !ok {
+		http.Error(w, "", http.StatusUnprocessableEntity)
+		return
+	}
 	_, err = st.AddNewOrder(claims.Login, orderNum)
 	if err != nil {
 		switch err {
@@ -350,4 +354,27 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 		strategy.Backoff(backoff.Incremental(0, 10*time.Second)),
 	)
 	return &updatedOrder, err
+}
+
+func luhnCheck(number int64) bool {
+	var luhn int64
+
+	for i := 0; number > 0; i++ {
+		cur := number % 10
+
+		if i%2 == 0 { // even
+			cur = cur * 2
+			if cur > 9 {
+				cur = cur%10 + cur/10
+			}
+		}
+
+		luhn += cur
+		number = number / 10
+	}
+	checkNumber := luhn % 10
+	if checkNumber == 0 {
+		return true
+	}
+	return false
 }
