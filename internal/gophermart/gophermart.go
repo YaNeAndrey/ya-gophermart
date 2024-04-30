@@ -17,7 +17,7 @@ func InitGophermart() {
 
 	r := router.InitRouter(st, orderCh)
 
-	err := http.ListenAndServe(conf.GetSrvAddr(), r)
+	err := http.ListenAndServe("localhost:8080" /*conf.GetSrvAddr()*/, r)
 
 	if err != nil {
 		panic(err)
