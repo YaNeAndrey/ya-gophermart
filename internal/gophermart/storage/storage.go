@@ -39,7 +39,7 @@ func InitStorage(dbConnectionString string) (*Storage, error) {
 		return nil, err
 	}
 
-	_, _ = db.ExecContext(myContext, "CREATE EXTENSION IF NOT EXISTS pgcrypto;")
+	_, err = db.ExecContext(myContext, "CREATE EXTENSION IF NOT EXISTS pgcrypto;")
 	if err != nil {
 		return nil, err
 	}
@@ -170,6 +170,9 @@ func (s *Storage) GetUserOrders(login string) (*[]Order, error) {
 	if err != nil {
 		return nil, err
 	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	defer rows.Close()
 
 	var orders []Order
@@ -193,11 +196,14 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 
 	ctx := context.Background()
 	rows, err := db.QueryContext(ctx, "select orders.id_order,orders.sum,orders.processed_at from orders join users_orders on orders.id_order = users_orders.id_order where login = $1 and sum > 0", login)
-	defer rows.Close()
-
 	if err != nil {
 		return nil, err
 	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	defer rows.Close()
+
 	var withdrawals []Withdrawal
 	for rows.Next() {
 		var withdrawal Withdrawal
@@ -254,6 +260,9 @@ func (s *Storage) GetAllNotProcessedOrders() (*[]Order, error) {
 
 	ctx := context.Background()
 	rows, err := db.QueryContext(ctx, "select id_order,status from orders where orders.status != 'PROCESSED' and orders.status != 'INVALID'")
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
