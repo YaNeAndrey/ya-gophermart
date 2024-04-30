@@ -18,7 +18,7 @@ func InitRouter(st *storage.Storage, ordersCh chan storage.Order) http.Handler {
 
 	logger := log.New()
 	logger.SetLevel(log.InfoLevel)
-	r.Use(middleware.Logger(logger))
+	//r.Use(middleware.Logger(logger))
 	r.Use(middleware.Gzip())
 
 	r.Route("/", func(r chi.Router) {
