@@ -80,7 +80,7 @@ func CheckAccess() func(next http.Handler) http.Handler {
 					if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 						return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 					}
-					return []byte(constants.SECRET_KEY), nil
+					return []byte(constants.SecretKey), nil
 				})
 
 			if token.Valid {

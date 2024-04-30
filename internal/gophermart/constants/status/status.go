@@ -1,8 +1,8 @@
 package stutus
 
 const (
-	NEW        = "NEW"
-	PROCESSING = "PROCESSING"
-	INVALID    = "INVALID"
-	PROCESSED  = "PROCESSED"
+	New        = "NEW"
+	Processing = "PROCESSING"
+	Invalid    = "INVALID"
+	Processed  = "PROCESSED"
 )

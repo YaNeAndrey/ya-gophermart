@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	errors "github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/consterror"
+	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/consterror"
 	"strconv"
 	"strings"
 )
@@ -20,7 +20,7 @@ func (c *Config) SetSrvAddr(srvAddrStr string) error {
 		return err
 	}
 	if srvPort > 65535 || srvPort < 0 {
-		return errors.IncorrectPortNumber
+		return consterror.ErrIncorrectPortNumber
 	} else {
 		c.srvPort = srvPort
 	}
@@ -34,7 +34,7 @@ func (c *Config) SetAccrualAddr(accrualAddrStr string) error {
 		return err
 	}
 	if srvPort > 65535 || srvPort < 0 {
-		return errors.IncorrectPortNumber
+		return consterror.ErrIncorrectPortNumber
 	} else {
 		c.accrualPort = srvPort
 	}
@@ -53,7 +53,7 @@ func (c *Config) GetAccrualAddr() string {
 func parseEndpoint(endpointStr string) (string, int, error) {
 	hp := strings.Split(endpointStr, ":")
 	if len(hp) != 2 {
-		return "", 0, errors.IncorrectEndpointFormat
+		return "", 0, consterror.ErrIncorrectEndpointFormat
 	}
 	port, err := strconv.Atoi(hp[1])
 	if err != nil {

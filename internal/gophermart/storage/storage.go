@@ -62,7 +62,7 @@ func (s *Storage) AddNewUser(login string, password string) error {
 	if err != nil {
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" {
-				return consterror.DuplicateLogin
+				return consterror.ErrDuplicateLogin
 			}
 		} else {
 			return err
@@ -85,7 +85,7 @@ func (s *Storage) CheckUserPassword(login string, password string) (bool, error)
 	// if error no rows - return user not found
 	err = row.Scan(&passwdOK)
 	if err != nil {
-		return false, consterror.LoginNotFound
+		return false, consterror.ErrLoginNotFound
 	}
 
 	return passwdOK, nil
@@ -99,7 +99,7 @@ func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
 	}
 
 	ctx := context.Background()
-	res, err := db.ExecContext(ctx, "INSERT INTO orders (id_order,status,uploaded_at,sum,accrual) VALUES ($1,$2,$3,0,0)", orderNumber, status.NEW, time.Now())
+	res, err := db.ExecContext(ctx, "INSERT INTO orders (id_order,status,uploaded_at,sum,accrual) VALUES ($1,$2,$3,0,0)", orderNumber, status.New, time.Now())
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -111,9 +111,9 @@ func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
 				var isCurrentUser bool
 				err = row.Scan(&isCurrentUser)
 				if isCurrentUser {
-					return nil, consterror.DuplicateUserOrder
+					return nil, consterror.ErrDuplicateUserOrder
 				} else {
-					return nil, consterror.DuplicateAnotherUserOrder
+					return nil, consterror.ErrDuplicateAnotherUserOrder
 				}
 			}
 		} else {
@@ -129,7 +129,7 @@ func (s *Storage) AddNewOrder(login string, orderNumber int64) (*Order, error) {
 	}
 	return &Order{
 		Number:        orderNumber,
-		Status:        status.NEW,
+		Status:        status.New,
 		Accrual:       0,
 		UploadDate:    time.Now(),
 		Sum:           0,
@@ -226,7 +226,7 @@ func (s *Storage) DoRebiting(login string, order int64, sum float32) error {
 		return err
 	}
 	if currentBalance <= sum {
-		return consterror.InsufficientFunds
+		return consterror.ErrInsufficientFunds
 	}
 	res, err := db.ExecContext(ctx, "update orders set sum = sum+$1 where id_order = $2", sum, order)
 	if err != nil {
@@ -235,7 +235,7 @@ func (s *Storage) DoRebiting(login string, order int64, sum float32) error {
 
 	rows, err := res.RowsAffected()
 	if rows == 0 {
-		return consterror.OrderNotFound
+		return consterror.ErrOrderNotFound
 	}
 
 	_, err = db.ExecContext(ctx, "UPDATE Users set current_balance = current_balance-$1,withdrawn_balance = withdrawn_balance+$1 where login = $2", sum, login)
@@ -276,7 +276,7 @@ func (s *Storage) UpdateOrder(order Order) error {
 		return err
 	}
 	ctx := context.Background()
-	if order.Status == status.PROCESSED {
+	if order.Status == status.Processed {
 		_, err := db.ExecContext(ctx, "update orders set status = $1, processed_at = $2 where id_order = $3", order.Status, order.ProcessedDate, order.Number)
 		if err != nil {
 			return err

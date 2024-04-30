@@ -43,7 +43,7 @@ func (m *Manager) Start() {
 			log.Println("The order is not registered in the accrual system")
 			continue
 		}
-		if updatedOrder.Status != status.PROCESSED && updatedOrder.Status != status.INVALID {
+		if updatedOrder.Status != status.Processed && updatedOrder.Status != status.Invalid {
 			err := m.Storage.UpdateOrder(*updatedOrder)
 			if err != nil {
 				m.dateCh <- order
@@ -86,8 +86,8 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 				}
 			case http.StatusTooManyRequests:
 				{
-					log.Println(consterror.CountRequestToAccrual)
-					return consterror.CountRequestToAccrual
+					log.Println(consterror.ErrCountRequestToAccrual)
+					return consterror.ErrCountRequestToAccrual
 				}
 			}
 			return nil

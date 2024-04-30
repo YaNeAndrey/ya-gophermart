@@ -31,7 +31,7 @@ func RegistrationPOST(w http.ResponseWriter, r *http.Request, st *storage.Storag
 
 	err = st.AddNewUser(user.Login, user.Password)
 	if err != nil {
-		if err == consterror.DuplicateLogin {
+		if err == consterror.ErrDuplicateLogin {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		} else {
@@ -57,7 +57,7 @@ func LoginPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 	//TODO: check user password if exist
 	ok, err := st.CheckUserPassword(user.Login, user.Password)
 	if err != nil {
-		if err == consterror.LoginNotFound {
+		if err == consterror.ErrLoginNotFound {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		} else {
@@ -97,12 +97,12 @@ func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage, ord
 	order, err := st.AddNewOrder(user.Login, orderNum)
 	if err != nil {
 		switch err {
-		case consterror.DuplicateUserOrder:
+		case consterror.ErrDuplicateUserOrder:
 			{
 				w.WriteHeader(http.StatusOK)
 
 			}
-		case consterror.DuplicateAnotherUserOrder:
+		case consterror.ErrDuplicateAnotherUserOrder:
 			http.Error(w, err.Error(), http.StatusConflict)
 		default:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -216,9 +216,9 @@ func BalanceWithdrawPOST(w http.ResponseWriter, r *http.Request, st *storage.Sto
 	err = st.DoRebiting(user.Login, withdrawals.Order, withdrawals.Sum)
 	if err != nil {
 		switch err {
-		case consterror.OrderNotFound:
+		case consterror.ErrOrderNotFound:
 			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		case consterror.InsufficientFunds:
+		case consterror.ErrInsufficientFunds:
 			http.Error(w, err.Error(), http.StatusPaymentRequired)
 		default:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -258,7 +258,7 @@ func buildJWTStringWithLogin(login string) (string, error) {
 	})
 
 	// создаём строку токена
-	tokenString, err := token.SignedString([]byte(constants.SECRET_KEY))
+	tokenString, err := token.SignedString([]byte(constants.SecretKey))
 	if err != nil {
 		return "", err
 	}
