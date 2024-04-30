@@ -5,6 +5,7 @@ import (
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/parser"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/router"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/storage"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 )
 
@@ -16,8 +17,8 @@ func InitGophermart() {
 	go am.Start()
 
 	r := router.InitRouter(st, orderCh)
-
-	err := http.ListenAndServe("localhost:8080" /*conf.GetSrvAddr()*/, r)
+	log.Println(conf.GetSrvAddr())
+	err := http.ListenAndServe(conf.GetSrvAddr() /*conf.GetSrvAddr()*/, r)
 
 	if err != nil {
 		panic(err)
