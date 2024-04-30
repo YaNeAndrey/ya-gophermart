@@ -28,7 +28,9 @@ func InitRouter(st *storage.Storage, config *config.Config) http.Handler {
 		r.Post("/api/user/login", func(rw http.ResponseWriter, req *http.Request) {
 			handler.LoginPOST(rw, req, st)
 		})
-
+		r.Get("/api/user/balance", func(rw http.ResponseWriter, req *http.Request) {
+			handler.BalanceGET(rw, req, st)
+		})
 		//after authorization
 		r.Route("/api/user/", func(r chi.Router) {
 			//r.Use(middleware.CheckAccess())
@@ -45,9 +47,6 @@ func InitRouter(st *storage.Storage, config *config.Config) http.Handler {
 				handler.WithdrawalsGET(rw, req, st)
 			})
 			r.Route("/balance/", func(r chi.Router) {
-				r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
-					handler.BalanceGET(rw, req, st)
-				})
 				r.Post("/withdraw", func(rw http.ResponseWriter, req *http.Request) {
 					handler.BalanceWithdrawPOST(rw, req, st)
 				})
