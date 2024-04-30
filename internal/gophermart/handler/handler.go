@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type Userinfo struct {
@@ -230,7 +229,7 @@ func BalanceWithdrawPOST(w http.ResponseWriter, r *http.Request, st *storage.Sto
 
 func ReadAuthDate(r *http.Request) (*Userinfo, error) {
 	var user Userinfo
-	err := json.NewDecoder(strings.NewReader(r.Header.Get("Authorization"))).Decode(&user)
+	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
