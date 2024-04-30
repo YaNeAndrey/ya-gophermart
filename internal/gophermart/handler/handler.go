@@ -6,6 +6,7 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/backoff"
 	"github.com/Rican7/retry/strategy"
+	"github.com/ShiraazMoollatjie/goluhn"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/config"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/constants/consterror"
@@ -97,11 +98,12 @@ func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	ok = luhnCheck(orderNum)
-	if !ok {
+	err = goluhn.Validate(strconv.FormatInt(orderNum, 10))
+	if err != nil {
 		http.Error(w, "", http.StatusUnprocessableEntity)
 		return
 	}
+
 	_, err = st.AddNewOrder(claims.Login, orderNum)
 	if err != nil {
 		switch err {
@@ -359,9 +361,9 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 
 func luhnCheck(number int64) bool {
 	var luhn int64
-
-	for i := 0; number > 0; i++ {
-		cur := number % 10
+	buf := number
+	for i := 0; buf > 0; i++ {
+		cur := buf % 10
 
 		if i%2 == 0 { // even
 			cur = cur * 2
@@ -371,7 +373,7 @@ func luhnCheck(number int64) bool {
 		}
 
 		luhn += cur
-		number = number / 10
+		buf = buf / 10
 	}
 	checkNumber := luhn % 10
 	if checkNumber == 0 {
