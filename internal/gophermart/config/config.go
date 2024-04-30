@@ -11,7 +11,6 @@ type Config struct {
 	srvAddr     string
 	srvPort     int
 	accrualAddr string
-	accrualPort int
 }
 
 func (c *Config) SetSrvAddr(srvAddrStr string) error {
@@ -29,16 +28,7 @@ func (c *Config) SetSrvAddr(srvAddrStr string) error {
 }
 
 func (c *Config) SetAccrualAddr(accrualAddrStr string) error {
-	srvAddr, srvPort, err := parseEndpoint(accrualAddrStr)
-	if err != nil {
-		return err
-	}
-	if srvPort > 65535 || srvPort < 0 {
-		return consterror.ErrIncorrectPortNumber
-	} else {
-		c.accrualPort = srvPort
-	}
-	c.accrualAddr = srvAddr
+	c.accrualAddr = accrualAddrStr
 	return nil
 }
 
@@ -47,7 +37,7 @@ func (c *Config) GetSrvAddr() string {
 }
 
 func (c *Config) GetAccrualAddr() string {
-	return fmt.Sprintf("%s:%d", c.accrualAddr, c.accrualPort)
+	return c.accrualAddr
 }
 
 func parseEndpoint(endpointStr string) (string, int, error) {

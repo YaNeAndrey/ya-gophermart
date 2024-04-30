@@ -12,7 +12,7 @@ func ParseConfig() *config.Config {
 	conf := new(config.Config)
 
 	runAddress := flag.String("a", "localhost:8080", "Server endpoint address server:port")
-	accrualAddress := flag.String("r", "localhost:8081", "Accrual system address server:port")
+	accrualAddress := flag.String("r", "http://localhost:8081", "Accrual system address server:port")
 	flag.Parse()
 
 	runAddressEnv, isExist := os.LookupEnv("RUN_ADDRESS")
