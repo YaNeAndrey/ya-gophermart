@@ -1,7 +1,7 @@
 package handler
 
 type WithdrawalsRequest struct {
-	Order int64   `json:"order"`
+	Order string  `json:"order"`
 	Sum   float32 `json:"sum"`
 }
 

@@ -221,7 +221,7 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 }
 
 // Запрос на списание средств
-func (s *Storage) DoRebiting(login string, order int64, sum float32) error {
+func (s *Storage) DoRebiting(login string, order string, sum float32) error {
 	db, err := TryToOpenDBConnection(s.dbConnectionString)
 	if err != nil {
 		return err
