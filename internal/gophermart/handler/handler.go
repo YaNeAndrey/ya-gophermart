@@ -128,22 +128,24 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	orders, err := st.GetUserOrders(claims.Login)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	client := http.Client{}
-	ordersInfo := []storage.Order{}
+	var ordersInfo []storage.Order
 	for _, order := range *orders {
 		orderAccrual, err := sendRequestToAccrual(conf, order, &client)
 		if err != nil {
 			continue
 		}
-
+		orderNumber, err := strconv.ParseInt(orderAccrual.Order, 10, 64)
+		if err != nil {
+			continue
+		}
 		updatedOrder := storage.Order{
-			Number:     orderAccrual.Order,
+			Number:     orderNumber,
 			Status:     orderAccrual.Status,
 			Accrual:    orderAccrual.Accrual,
 			UploadDate: order.UploadDate,
@@ -157,7 +159,6 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 	}
 
 	if len(ordersInfo) == 0 {
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
