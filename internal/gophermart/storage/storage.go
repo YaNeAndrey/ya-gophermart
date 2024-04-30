@@ -221,7 +221,7 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 }
 
 // Запрос на списание средств
-func (s *Storage) DoRebiting(login string, order string, sum float32) error {
+func (s *Storage) DoRebiting(login string, order string, sum float64) error {
 	db, err := TryToOpenDBConnection(s.dbConnectionString)
 	if err != nil {
 		return err
@@ -231,7 +231,7 @@ func (s *Storage) DoRebiting(login string, order string, sum float32) error {
 	if row.Err() != nil {
 		return err
 	}
-	var currentBalance float32
+	var currentBalance float64
 	err = row.Scan(&currentBalance)
 	if err != nil {
 		return err

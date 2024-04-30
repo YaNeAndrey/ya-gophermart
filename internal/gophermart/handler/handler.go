@@ -153,7 +153,7 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 		if updatedOrder.Status != order.Status {
 			err = st.UpdateOrder(updatedOrder)
 			if updatedOrder.Status == status.Processed {
-
+				err = st.UpdateBalance(updatedOrder)
 			}
 		}
 		if err != nil {
