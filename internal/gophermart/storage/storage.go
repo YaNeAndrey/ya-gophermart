@@ -307,7 +307,7 @@ func (s *Storage) UpdateBalance(order Order) error {
 		return err
 	}
 	ctx := context.Background()
-	_, err = db.ExecContext(ctx, "update Users set current_balance = current_balance+$1 where login = (select DISTINCT ON (users_orders.login) from users_orders where users_orders.id_order = $2)", order.Accrual, order.Number)
+	_, err = db.ExecContext(ctx, "update Users set current_balance = current_balance+$1 where login = (select DISTINCT users_orders.login from users_orders where users_orders.id_order = $2)", order.Accrual, order.Number)
 	if err != nil {
 		return err
 	}
