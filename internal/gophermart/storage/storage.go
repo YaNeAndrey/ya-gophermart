@@ -200,7 +200,7 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 	}
 
 	ctx := context.Background()
-	rows, err := db.QueryContext(ctx, "select orders.id_order,orders.sum,orders.processed_at from orders join users_orders on orders.id_order = users_orders.id_order where login = $1 and sum > 0", login)
+	rows, err := db.QueryContext(ctx, "select orders.id_order,orders.sum,orders.uploaded_at from orders join users_orders on orders.id_order = users_orders.id_order where login = $1 and sum > 0", login)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 	var withdrawals []Withdrawal
 	for rows.Next() {
 		var withdrawal Withdrawal
-		if err := rows.Scan(&withdrawal.OrderNumber, &withdrawal.Sum, withdrawal.ProcessedDate); err != nil {
+		if err := rows.Scan(&withdrawal.OrderNumber, &withdrawal.Sum, &withdrawal.ProcessedDate); err != nil {
 			continue
 		}
 		withdrawals = append(withdrawals, withdrawal)
