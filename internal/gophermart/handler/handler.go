@@ -130,7 +130,6 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	orders, err := st.GetUserOrders(claims.Login)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -141,6 +140,9 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 	for _, order := range *orders {
 		orderAccrual, err := sendRequestToAccrual(conf, order, &client)
 		if err != nil {
+			continue
+		}
+		if orderAccrual == nil {
 			continue
 		}
 		updatedOrder := storage.Order{
@@ -172,6 +174,7 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -340,7 +343,7 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 	if err != nil {
 		return nil, err
 	}
-	var updatedOrder OrderAccrual
+	updatedOrder := new(OrderAccrual)
 	err = retry.Retry(
 		func(attempt uint) error {
 			//send request
@@ -352,7 +355,7 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 			switch resp.StatusCode {
 			case http.StatusOK:
 				{
-					err := json.NewDecoder(resp.Body).Decode(&updatedOrder)
+					err := json.NewDecoder(resp.Body).Decode(updatedOrder)
 					if err != nil {
 						return err
 					}
@@ -360,6 +363,7 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 			case http.StatusNoContent:
 				{
 					log.Println("The order is not registered in the accrual system")
+					updatedOrder = nil
 				}
 			case http.StatusTooManyRequests:
 				{
@@ -372,5 +376,5 @@ func sendRequestToAccrual(config *config.Config, order storage.Order, client *ht
 		strategy.Limit(4),
 		strategy.Backoff(backoff.Incremental(0, 10*time.Second)),
 	)
-	return &updatedOrder, err
+	return updatedOrder, err
 }
