@@ -251,9 +251,20 @@ func (s *Storage) DoRebiting(login string, order string, sum float64) error {
 	}
 	res, err := db.ExecContext(ctx, "insert into orders (id_order,status,uploaded_at ,sum,accrual) values ($1,'NEW',$2,$3,0) ON CONFLICT (id_order) DO UPDATE SET sum = orders.sum + $3", order, time.Now(), sum)
 	if err != nil {
-		return err
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				res, err = db.ExecContext(ctx, "UPDATE orders SET sum = orders.sum + $1 where id_order = $2", sum, order)
+				if err != nil {
+					return err
+				}
+				res, err = db.ExecContext(ctx, "INSERT INTO users_orders (id_order,login) values ($1,$2)", order, login)
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
-
 	rows, err := res.RowsAffected()
 	if err != nil {
 		return err
