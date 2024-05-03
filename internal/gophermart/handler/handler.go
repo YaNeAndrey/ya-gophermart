@@ -181,7 +181,7 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	//w.WriteHeader(http.StatusOK)
 }
 
 func WithdrawalsGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
@@ -209,7 +209,7 @@ func WithdrawalsGET(w http.ResponseWriter, r *http.Request, st *storage.Storage)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	//w.WriteHeader(http.StatusOK)
 }
 
 func BalanceGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
@@ -235,7 +235,7 @@ func BalanceGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	//w.WriteHeader(http.StatusOK)
 }
 
 func BalanceWithdrawPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
