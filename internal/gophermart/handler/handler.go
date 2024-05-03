@@ -191,8 +191,12 @@ func WithdrawalsGET(w http.ResponseWriter, r *http.Request, st *storage.Storage)
 		return
 	}
 	withdrawals, err := st.GetUserWithdrawals(claims.Login)
-	if len(*withdrawals) == 0 {
-		http.Error(w, err.Error(), http.StatusNoContent)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if withdrawals == nil {
+		http.Error(w, "", http.StatusNoContent)
 	}
 	body, err := json.Marshal(withdrawals)
 	if err != nil {

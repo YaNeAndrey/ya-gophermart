@@ -222,7 +222,11 @@ func (s *Storage) GetUserWithdrawals(login string) (*[]Withdrawal, error) {
 		}
 		withdrawals = append(withdrawals, withdrawal)
 	}
-	return &withdrawals, nil
+	if len(withdrawals) == 0 {
+		return nil, nil
+	} else {
+		return &withdrawals, nil
+	}
 }
 
 // Запрос на списание средств
