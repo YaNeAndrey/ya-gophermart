@@ -155,9 +155,9 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 			Sum:        order.Sum,
 		}
 		if updatedOrder.Status != order.Status {
-			err = st.UpdateOrder(updatedOrder)
+			_ = st.UpdateOrder(updatedOrder)
 			if updatedOrder.Status == status.Processed {
-				err = st.UpdateBalance(updatedOrder)
+				_ = st.UpdateBalance(updatedOrder)
 			}
 		}
 		ordersInfo = append(ordersInfo, updatedOrder)
