@@ -140,9 +140,11 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 	for _, order := range *orders {
 		orderAccrual, err := sendRequestToAccrual(conf, order, &client)
 		if err != nil {
+			ordersInfo = append(ordersInfo, order)
 			continue
 		}
 		if orderAccrual == nil {
+			ordersInfo = append(ordersInfo, order)
 			continue
 		}
 		updatedOrder := storage.Order{
@@ -157,9 +159,6 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 			if updatedOrder.Status == status.Processed {
 				err = st.UpdateBalance(updatedOrder)
 			}
-		}
-		if err != nil {
-			return
 		}
 		ordersInfo = append(ordersInfo, updatedOrder)
 	}
