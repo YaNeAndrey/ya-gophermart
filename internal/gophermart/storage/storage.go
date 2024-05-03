@@ -239,7 +239,7 @@ func (s *Storage) DoRebiting(login string, order string, sum float64) error {
 	if currentBalance <= sum {
 		return consterror.ErrInsufficientFunds
 	}
-	res, err := db.ExecContext(ctx, "update orders set sum = sum+$1 where id_order = $2", sum, order)
+	res, err := db.ExecContext(ctx, "insert into orders (id_order,status,uploaded_at ,sum,accrual) values ($1,'NEW',$2,$3,0) ON CONFLICT (id_order) DO UPDATE SET sum = orders.sum + $3", order, time.Now(), sum)
 	if err != nil {
 		return err
 	}
