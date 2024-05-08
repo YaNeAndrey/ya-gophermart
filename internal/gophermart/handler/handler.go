@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/Rican7/retry"
@@ -31,14 +32,15 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func RegistrationPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
+func RegistrationPOST(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	user, err := ReadAuthDate(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = st.AddNewUser(user.Login, user.Password)
+	ctx := context.Background()
+	err = (*st).AddNewUser(ctx, user.Login, user.Password)
 	if err != nil {
 		if err == consterror.ErrDuplicateLogin {
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -57,14 +59,14 @@ func RegistrationPOST(w http.ResponseWriter, r *http.Request, st *storage.Storag
 	w.WriteHeader(http.StatusOK)
 }
 
-func LoginPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
+func LoginPOST(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	user, err := ReadAuthDate(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	//TODO: check user password if exist
-	ok, err := st.CheckUserPassword(user.Login, user.Password)
+	ctx := context.Background()
+	ok, err := (*st).CheckUserPassword(ctx, user.Login, user.Password)
 	if err != nil {
 		if err == consterror.ErrLoginNotFound {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -87,7 +89,7 @@ func LoginPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 	}
 }
 
-func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
+func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	claims, ok := checkAccess(r)
 	if !ok {
 		http.Error(w, "", http.StatusUnauthorized)
@@ -104,8 +106,8 @@ func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 		http.Error(w, "", http.StatusUnprocessableEntity)
 		return
 	}
-
-	_, err = st.AddNewOrder(claims.Login, strconv.FormatInt(orderNum, 10))
+	ctx := context.Background()
+	_, err = (*st).AddNewOrder(ctx, claims.Login, strconv.FormatInt(orderNum, 10))
 	if err != nil {
 		switch err {
 		case consterror.ErrDuplicateUserOrder:
@@ -123,14 +125,15 @@ func OrdersPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *storage.Storage) {
+func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *storage.StorageRepo) {
 	claims, ok := checkAccess(r)
 	if !ok {
 		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
 
-	orders, err := st.GetUserOrders(claims.Login)
+	ctx := context.Background()
+	orders, err := (*st).GetUserOrders(ctx, claims.Login)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -155,9 +158,9 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 			Sum:        order.Sum,
 		}
 		if updatedOrder.Status != order.Status {
-			_ = st.UpdateOrder(updatedOrder)
+			_ = (*st).UpdateOrder(ctx, updatedOrder)
 			if updatedOrder.Status == status.Processed {
-				_ = st.UpdateBalance(updatedOrder)
+				_ = (*st).UpdateBalance(ctx, updatedOrder)
 			}
 		}
 		ordersInfo = append(ordersInfo, updatedOrder)
@@ -183,13 +186,15 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 	//w.WriteHeader(http.StatusOK)
 }
 
-func WithdrawalsGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
+func WithdrawalsGET(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	claims, ok := checkAccess(r)
 	if !ok {
 		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
-	withdrawals, err := st.GetUserWithdrawals(claims.Login)
+
+	ctx := context.Background()
+	withdrawals, err := (*st).GetUserWithdrawals(ctx, claims.Login)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -211,13 +216,15 @@ func WithdrawalsGET(w http.ResponseWriter, r *http.Request, st *storage.Storage)
 	//w.WriteHeader(http.StatusOK)
 }
 
-func BalanceGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
+func BalanceGET(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	claims, ok := checkAccess(r)
 	if !ok {
 		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
-	balance, err := st.GetUserBalance(claims.Login)
+
+	ctx := context.Background()
+	balance, err := (*st).GetUserBalance(ctx, claims.Login)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -237,7 +244,7 @@ func BalanceGET(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
 	//w.WriteHeader(http.StatusOK)
 }
 
-func BalanceWithdrawPOST(w http.ResponseWriter, r *http.Request, st *storage.Storage) {
+func BalanceWithdrawPOST(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	claims, ok := checkAccess(r)
 	if !ok {
 		http.Error(w, "", http.StatusUnauthorized)
@@ -258,7 +265,8 @@ func BalanceWithdrawPOST(w http.ResponseWriter, r *http.Request, st *storage.Sto
 		}
 	*/
 
-	err = st.DoRebiting(claims.Login, withdrawals.Order, withdrawals.Sum)
+	ctx := context.Background()
+	err = (*st).DoRebiting(ctx, claims.Login, withdrawals.Order, withdrawals.Sum)
 	if err != nil {
 		switch err {
 		case consterror.ErrOrderNotFound:

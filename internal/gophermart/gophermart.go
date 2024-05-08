@@ -3,14 +3,15 @@ package gophermart
 import (
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/parser"
 	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/router"
+	"github.com/YaNeAndrey/ya-gophermart/internal/gophermart/storage"
 	"net/http"
 )
 
 func InitGophermart() {
 	conf := parser.ParseConfig()
-	st := parser.ParseStorageInfo()
+	st := storage.StorageRepo(parser.ParseStorageInfo())
 
-	r := router.InitRouter(st, conf)
+	r := router.InitRouter(&st, conf)
 	err := http.ListenAndServe(conf.GetSrvAddr(), r)
 
 	if err != nil {

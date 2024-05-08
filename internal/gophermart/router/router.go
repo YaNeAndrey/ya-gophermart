@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func InitRouter(st *storage.Storage, config *config.Config) http.Handler {
+func InitRouter(st *storage.StorageRepo, config *config.Config) http.Handler {
 	r := chi.NewRouter()
 	r.NotFound(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusNotFound)
