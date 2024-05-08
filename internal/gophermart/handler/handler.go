@@ -141,22 +141,26 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 	client := http.Client{}
 	var ordersInfo []storage.Order
 	for _, order := range *orders {
-		orderAccrual, err := sendRequestToAccrual(conf, order, &client)
-		if err != nil {
-			ordersInfo = append(ordersInfo, order)
-			continue
+		updatedOrder := order
+		if order.Status != status.Processed && order.Status != status.Invalid {
+			orderAccrual, err := sendRequestToAccrual(conf, order, &client)
+			if err != nil {
+				ordersInfo = append(ordersInfo, order)
+				continue
+			}
+			if orderAccrual == nil {
+				ordersInfo = append(ordersInfo, order)
+				continue
+			}
+			updatedOrder = storage.Order{
+				Number:     orderAccrual.Order,
+				Status:     orderAccrual.Status,
+				Accrual:    orderAccrual.Accrual,
+				UploadDate: order.UploadDate,
+				Sum:        order.Sum,
+			}
 		}
-		if orderAccrual == nil {
-			ordersInfo = append(ordersInfo, order)
-			continue
-		}
-		updatedOrder := storage.Order{
-			Number:     orderAccrual.Order,
-			Status:     orderAccrual.Status,
-			Accrual:    orderAccrual.Accrual,
-			UploadDate: order.UploadDate,
-			Sum:        order.Sum,
-		}
+
 		if updatedOrder.Status != order.Status {
 			_ = (*st).UpdateOrder(ctx, updatedOrder)
 			if updatedOrder.Status == status.Processed {
@@ -226,11 +230,13 @@ func BalanceGET(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo)
 	ctx := context.Background()
 	balance, err := (*st).GetUserBalance(ctx, claims.Login)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	body, err := json.Marshal(balance)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -257,13 +263,6 @@ func BalanceWithdrawPOST(w http.ResponseWriter, r *http.Request, st *storage.Sto
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	//check withdrawals.Order with luna
-	/*
-		if not correct {
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-			return
-		}
-	*/
 
 	ctx := context.Background()
 	err = (*st).DoRebiting(ctx, claims.Login, withdrawals.Order, withdrawals.Sum)
