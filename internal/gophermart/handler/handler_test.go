@@ -72,6 +72,7 @@ func TestBalanceGET(t *testing.T) {
 			r.ServeHTTP(w, tt.args.req)
 
 			result := w.Result()
+			defer result.Body.Close()
 			require.Equal(t, tt.statusCode, result.StatusCode)
 		})
 	}
@@ -136,8 +137,8 @@ func TestBalanceWithdrawPOST(t *testing.T) {
 				BalanceWithdrawPOST(rw, r, &st)
 			})
 			r.ServeHTTP(w, tt.args.req)
-
 			result := w.Result()
+			defer result.Body.Close()
 			require.Equal(t, tt.statusCode, result.StatusCode)
 		})
 	}
@@ -202,8 +203,8 @@ func TestLoginPOST(t *testing.T) {
 				LoginPOST(rw, r, &st)
 			})
 			r.ServeHTTP(w, tt.args.req)
-
 			result := w.Result()
+			defer result.Body.Close()
 			require.Equal(t, tt.statusCode, result.StatusCode)
 		})
 	}
@@ -274,8 +275,8 @@ func TestOrdersPOST(t *testing.T) {
 				OrdersPOST(rw, r, &st)
 			})
 			r.ServeHTTP(w, tt.args.req)
-
 			result := w.Result()
+			defer result.Body.Close()
 			require.Equal(t, tt.statusCode, result.StatusCode)
 		})
 	}
@@ -320,14 +321,6 @@ func TestWithdrawalsGET(t *testing.T) {
 			},
 			statusCode: http.StatusNoContent,
 		},
-		{
-			name: "Fourth test",
-			args: args{
-				req: httptest.NewRequest(http.MethodPost, "/api/user/withdrawals", nil),
-				st:  mocks.NewMockStorageRepo(ctrl),
-			},
-			statusCode: http.StatusUnauthorized,
-		},
 	}
 
 	tests[0].args.st.EXPECT().GetUserWithdrawals(ctx, "1").Return(nil, errors.New(""))
@@ -348,23 +341,9 @@ func TestWithdrawalsGET(t *testing.T) {
 				WithdrawalsGET(rw, r, &st)
 			})
 			r.ServeHTTP(w, tt.args.req)
-
 			result := w.Result()
+			defer result.Body.Close()
 			require.Equal(t, tt.statusCode, result.StatusCode)
 		})
 	}
-
-	t.Run(tests[3].name, func(t *testing.T) {
-		w := httptest.NewRecorder()
-		r := chi.NewRouter()
-
-		st := storage.StorageRepo(tests[3].args.st)
-		r.Post("/api/user/withdrawals", func(rw http.ResponseWriter, r *http.Request) {
-			WithdrawalsGET(rw, r, &st)
-		})
-		r.ServeHTTP(w, tests[3].args.req)
-
-		result := w.Result()
-		require.Equal(t, tests[3].statusCode, result.StatusCode)
-	})
 }

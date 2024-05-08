@@ -8,11 +8,12 @@ type Balance struct {
 }
 
 type Order struct {
-	Number     string    `json:"number"`
-	Status     string    `json:"status"`
-	Accrual    float64   `json:"accrual,omitempty"`
-	UploadDate time.Time `json:"uploaded_at,omitempty"`
-	Sum        float64   `json:"sum,omitempty"`
+	Number        string    `json:"number"`
+	Status        string    `json:"status"`
+	Accrual       float64   `json:"accrual,omitempty"`
+	UploadDate    time.Time `json:"uploaded_at,omitempty"`
+	ProcessedDate time.Time `json:"processed_at,omitempty"`
+	Sum           float64   `json:"sum,omitempty"`
 }
 
 type Withdrawal struct {

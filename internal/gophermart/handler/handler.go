@@ -162,10 +162,11 @@ func OrdersGET(w http.ResponseWriter, r *http.Request, conf *config.Config, st *
 		}
 
 		if updatedOrder.Status != order.Status {
-			_ = (*st).UpdateOrder(ctx, updatedOrder)
 			if updatedOrder.Status == status.Processed {
+				updatedOrder.ProcessedDate = time.Now()
 				_ = (*st).UpdateBalance(ctx, updatedOrder)
 			}
+			_ = (*st).UpdateOrder(ctx, updatedOrder)
 		}
 		ordersInfo = append(ordersInfo, updatedOrder)
 	}
